@@ -34,6 +34,28 @@ const michroma = localFont({
 export const metadata: Metadata = {
   title: 'Fabián Moon - Peluquería & Barbería de Autor en La Rioja Capital',
   description: 'Peluquería y barbería de autor en La Rioja Capital. Estilo, precisión y personalidad en cada corte. Reservá tu turno ahora.',
+  openGraph: {
+    title: 'Fabián Moon - Peluquería & Barbería de Autor en La Rioja Capital',
+    description: 'Peluquería y barbería de autor en La Rioja Capital. Estilo, precisión y personalidad en cada corte. Reservá tu turno ahora.',
+    url: 'https://fabianmoon.com',
+    siteName: 'Fabián Moon',
+    images: [
+      {
+        url: '/moon5.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Fabián Moon - Peluquería & Barbería de Autor',
+      },
+    ],
+    locale: 'es_AR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Fabián Moon - Peluquería & Barbería de Autor en La Rioja Capital',
+    description: 'Peluquería y barbería de autor en La Rioja Capital. Estilo, precisión y personalidad en cada corte. Reservá tu turno ahora.',
+    images: ['/moon5.jpg'],
+  },
 }
 
 export default function RootLayout({
