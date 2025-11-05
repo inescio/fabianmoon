@@ -69,13 +69,13 @@ export const Services = () => {
 
   return (
     <section id="servicios" className="relative bg-background">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <TextReveal className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-display font-bold mb-4">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
+        <TextReveal className="text-center mb-12 sm:mb-16">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">
             Nuestros <span className="text-gradient-gold">Servicios</span>
           </h2>
-          <div className="w-20 h-1 bg-gradient-to-r from-accent to-yellow-600 mx-auto mb-6"></div>
-          <p className="text-lg text-foreground/70 max-w-2xl mx-auto">
+          <div className="w-16 sm:w-20 h-1 bg-gradient-to-r from-accent to-yellow-600 mx-auto mb-4 sm:mb-6"></div>
+          <p className="text-lg sm:text-xl text-foreground/70 max-w-2xl mx-auto px-4">
             Experiencia premium en cada servicio, diseñado para tu estilo único
           </p>
         </TextReveal>

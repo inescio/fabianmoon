@@ -1,35 +1,22 @@
 import type { Metadata } from 'next'
-import localFont from 'next/font/local'
-import { Michroma } from 'next/font/google'
+import { Bebas_Neue, Michroma } from 'next/font/google'
 import './globals.css'
 
-// Fuente para textos: MoMo Trust Display (desde archivo local)
-const momoTrustDisplay = localFont({
-  src: './fonts/MomoTrustDisplay-Regular.ttf',
-  variable: '--font-momo',
-  display: 'swap',
-  fallback: ['sans-serif'],
+// Fuente para textos generales: Bebas Neue (desde Google Fonts)
+const bebasNeue = Bebas_Neue({ 
   weight: '400',
+  subsets: ['latin'],
+  variable: '--font-bebas',
+  display: 'swap',
 })
 
-// Fuente para títulos: Michroma (desde Google Fonts)
-// TODO: Si descargas Michroma localmente, reemplaza esto con localFont
+// Fuente para "Fabián Moon" y navbar: Michroma (desde Google Fonts)
 const michroma = Michroma({ 
   weight: '400',
   subsets: ['latin'],
   variable: '--font-michroma',
   display: 'swap',
 })
-
-// Para usar Michroma local cuando la descargues, descomenta esto y comenta la línea de Google Fonts arriba:
-/*
-const michroma = localFont({
-  src: './fonts/Michroma-Regular.ttf', // o .woff2, .woff según el formato que tengas
-  variable: '--font-michroma',
-  display: 'swap',
-  fallback: ['sans-serif'],
-})
-*/
 
 export const metadata: Metadata = {
   title: 'Fabián Moon - Peluquería & Barbería de Autor en La Rioja Capital',
@@ -65,7 +52,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className="dark">
-      <body className={`${momoTrustDisplay.variable} ${michroma.variable} font-momo antialiased`} style={{ backgroundColor: '#000000', color: '#ffffff' }}>
+      <body className={`${bebasNeue.variable} ${michroma.variable} font-bebas antialiased`} style={{ backgroundColor: '#000000', color: '#ffffff' }}>
         {children}
       </body>
     </html>

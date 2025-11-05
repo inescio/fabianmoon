@@ -145,11 +145,11 @@ export const ProductCard = ({
       />
       <div className="absolute inset-0 h-full w-full opacity-0 group-hover/product:opacity-80 bg-black pointer-events-none transition-opacity duration-300"></div>
       <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover/product:opacity-100 transition-opacity duration-300">
-        <h2 className="text-white text-xl font-display font-semibold mb-2">
+        <h2 className="text-white text-xl font-semibold mb-2">
           {product.title}
         </h2>
         {product.description && (
-          <p className="text-white/80 text-sm">{product.description}</p>
+          <p className="text-white/80 text-base">{product.description}</p>
         )}
       </div>
     </>

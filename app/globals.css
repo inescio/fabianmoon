@@ -56,6 +56,10 @@ html {
     color: #ffffff !important;
     margin: 0;
     padding: 0;
+    font-size: 19px; /* Aumentado de 16px base a 19px (+3px) */
+  }
+  html {
+    font-size: 19px; /* Aumentado el tamaño base */
   }
 }
 

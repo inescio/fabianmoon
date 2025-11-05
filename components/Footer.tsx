@@ -14,13 +14,13 @@ export const Footer = () => {
 
   return (
     <footer className="bg-gradient-to-b from-background to-black border-t border-border">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mb-6 sm:mb-8">
           <div>
-            <h3 className="text-2xl font-display font-bold mb-4">
+            <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
               <span className="text-gradient-gold">Fabián Moon</span>
             </h3>
-            <p className="text-foreground/70 mb-4">
+            <p className="text-sm sm:text-base text-foreground/70 mb-4">
               Peluquería y barbería de autor en La Rioja Capital. Estilo, precisión y personalidad en cada corte.
             </p>
             <div className="flex gap-4">
@@ -50,7 +50,7 @@ export const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-display font-semibold text-lg mb-4 text-foreground">Links Rápidos</h4>
+            <h4 className="font-semibold text-lg mb-4 text-foreground">Links Rápidos</h4>
             <ul className="space-y-2">
               <li>
                 <button
@@ -88,7 +88,7 @@ export const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-display font-semibold text-lg mb-4 text-foreground">Contacto</h4>
+            <h4 className="font-semibold text-lg mb-4 text-foreground">Contacto</h4>
             <ul className="space-y-3">
               <li className="flex items-start gap-2 text-foreground/70">
                 <MapPin className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
@@ -110,11 +110,11 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-foreground/60">
-          <p>© {currentYear} Fabián Moon. Todos los derechos reservados.</p>
-          <div className="flex gap-6">
-            <button className="hover:text-accent transition-colors">Políticas de Privacidad</button>
-            <button className="hover:text-accent transition-colors">Términos y Condiciones</button>
+        <div className="border-t border-border pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4 text-sm sm:text-base text-foreground/60">
+          <p className="text-center md:text-left">© {currentYear} Fabián Moon. Todos los derechos reservados.</p>
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
+            <button className="hover:text-accent transition-colors text-xs sm:text-sm">Políticas de Privacidad</button>
+            <button className="hover:text-accent transition-colors text-xs sm:text-sm">Términos y Condiciones</button>
           </div>
         </div>
       </div>

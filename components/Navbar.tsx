@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Menu, X, Calendar } from 'lucide-react';
 import { Button } from './Button';
 
@@ -47,36 +48,37 @@ export const Navbar = () => {
       }}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           <button
             onClick={() => scrollToSection('hero')}
             className="flex items-center space-x-2 group"
           >
             <div className="relative">
-              <span className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground group-hover:text-accent transition-colors">
+              <span className="text-xl sm:text-2xl lg:text-3xl font-display font-bold tracking-tight text-foreground group-hover:text-accent transition-colors">
                 Fabián Moon
               </span>
               <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-accent to-yellow-600 group-hover:w-full transition-all duration-300"></div>
             </div>
           </button>
 
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
             {navLinks.map((link) => (
               <button
                 key={link.id}
                 onClick={() => scrollToSection(link.id)}
-                className="text-foreground/80 hover:text-accent transition-colors font-medium"
+                className="text-sm lg:text-base text-foreground/80 hover:text-accent transition-colors font-medium"
               >
                 {link.label}
               </button>
             ))}
-            <Button
-              onClick={() => scrollToSection('ubicacion')}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold shadow-gold-glow"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Reservar Turno
-            </Button>
+            <Link href="/reservar">
+              <Button
+                className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold shadow-gold-glow text-sm lg:text-base px-4 lg:px-6 py-2"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Reservar Turno
+              </Button>
+            </Link>
           </div>
 
           <button
@@ -102,13 +104,14 @@ export const Navbar = () => {
                 {link.label}
               </button>
             ))}
-            <Button
-              onClick={() => scrollToSection('ubicacion')}
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Reservar Turno
-            </Button>
+            <Link href="/reservar">
+              <Button
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Reservar Turno
+              </Button>
+            </Link>
           </div>
         )}
       </div>

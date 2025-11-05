@@ -34,9 +34,9 @@ const config: Config = {
         ring: 'hsl(var(--ring))',
       },
       fontFamily: {
-        momo: ['var(--font-momo)', 'sans-serif'],
+        bebas: ['var(--font-bebas)', 'sans-serif'],
         michroma: ['var(--font-michroma)', 'sans-serif'],
-        display: ['var(--font-michroma)', 'sans-serif'], // Para títulos (compatibilidad)
+        display: ['var(--font-michroma)', 'sans-serif'], // Para "Fabián Moon" y navbar
       },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-in-out',
