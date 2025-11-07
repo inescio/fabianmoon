@@ -37,6 +37,7 @@ const config: Config = {
         bebas: ['var(--font-bebas)', 'sans-serif'],
         michroma: ['var(--font-michroma)', 'sans-serif'],
         display: ['var(--font-michroma)', 'sans-serif'], // Para "Fabián Moon" y navbar
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'], // Para la página de propuesta
       },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-in-out',
