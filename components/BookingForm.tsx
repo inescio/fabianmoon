@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Calendar } from '@/components/ui/calendar';
@@ -37,6 +37,14 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+
+  const excludedServiceNames = useMemo(() => new Set(['Cortes de Autor', 'Cuidado y Estilo']), []);
+
+  const sanitizeServices = useCallback(
+    (servicesList: Service[] = []) =>
+      servicesList.filter((service) => !excludedServiceNames.has(service.name)),
+    [excludedServiceNames]
+  );
 
   // Errores
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,24 +101,10 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       created_at: new Date().toISOString(),
     },
     {
-      id: '8',
-      name: 'Cortes de Autor',
-      description: 'Diseños únicos y personalizados creados especialmente para ti',
-      duration_minutes: 60,
-      created_at: new Date().toISOString(),
-    },
-    {
       id: '9',
       name: 'Alisado y Keratina',
       description: 'Tratamientos profesionales para cabello liso y sedoso',
       duration_minutes: 120,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: '10',
-      name: 'Cuidado y Estilo',
-      description: 'Servicios completos de cuidado capilar y estilismo',
-      duration_minutes: 60,
       created_at: new Date().toISOString(),
     },
   ];
@@ -132,22 +126,22 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
         ]);
 
         if (Array.isArray(servicesRes) && servicesRes.length > 0) {
-          setServices(servicesRes);
+          setServices(sanitizeServices(servicesRes));
         } else if (supabase) {
           // Fallback: usar supabase directamente si está disponible
           try {
             const { data } = await supabase.from('services').select('*').order('name');
             if (data && data.length > 0) {
-              setServices(data);
+              setServices(sanitizeServices(data));
             } else {
-              setServices(defaultServices);
+              setServices(sanitizeServices(defaultServices));
             }
           } catch {
-            setServices(defaultServices);
+            setServices(sanitizeServices(defaultServices));
           }
         } else {
           // Si no hay Supabase configurado, usar servicios por defecto
-          setServices(defaultServices);
+          setServices(sanitizeServices(defaultServices));
         }
         
         if (Array.isArray(professionalsRes)) {
@@ -156,14 +150,14 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       } catch (error) {
         console.error('Error loading data:', error);
         // En caso de error, usar servicios por defecto
-        setServices(defaultServices);
+        setServices(sanitizeServices(defaultServices));
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [sanitizeServices]);
 
   // Cargar horarios disponibles cuando cambia la fecha o servicios
   useEffect(() => {
@@ -341,7 +335,7 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto font-sans">
       {/* Indicador de pasos */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -382,7 +376,7 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       </div>
 
       {/* Contenido del formulario */}
-      <div className="glass rounded-2xl p-4 sm:p-6 lg:p-8 min-h-[400px] sm:min-h-[500px]">
+      <div className="glass rounded-2xl p-4 sm:p-6 lg:p-8 min-h-[400px] sm:min-h-[500px] font-sans">
         <AnimatePresence mode="wait">
           {/* Paso 1: Servicios */}
           {currentStep === 'services' && (

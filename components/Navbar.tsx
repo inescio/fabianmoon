@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { Menu, X, Calendar } from 'lucide-react';
 import { Button } from './Button';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,8 +24,26 @@ export const Navbar = () => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
-      setIsMobileMenuOpen(false);
     }
+  };
+
+  const handleNavigation = (id: string) => {
+    if (pathname !== '/') {
+      const target = id === 'hero' ? '/' : `/#${id}`;
+      router.push(target);
+    } else {
+      scrollToSection(id);
+    }
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleLogoClick = () => {
+    if (pathname !== '/') {
+      router.push('/');
+    } else {
+      scrollToSection('hero');
+    }
+    setIsMobileMenuOpen(false);
   };
 
   const navLinks = [
@@ -50,7 +71,7 @@ export const Navbar = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           <button
-            onClick={() => scrollToSection('hero')}
+            onClick={handleLogoClick}
             className="flex items-center space-x-2 group"
           >
             <div className="relative">
@@ -65,7 +86,7 @@ export const Navbar = () => {
             {navLinks.map((link) => (
               <button
                 key={link.id}
-                onClick={() => scrollToSection(link.id)}
+                onClick={() => handleNavigation(link.id)}
                 className="text-sm lg:text-base text-foreground/80 hover:text-accent transition-colors font-medium"
               >
                 {link.label}
@@ -98,7 +119,7 @@ export const Navbar = () => {
             {navLinks.map((link) => (
               <button
                 key={link.id}
-                onClick={() => scrollToSection(link.id)}
+                onClick={() => handleNavigation(link.id)}
                 className="block w-full text-left text-foreground/80 hover:text-accent transition-colors font-medium py-2"
               >
                 {link.label}

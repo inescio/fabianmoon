@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Inter } from 'next/font/google';
 import { BookingForm } from '@/components/BookingForm';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -8,13 +9,19 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { CheckCircle } from 'lucide-react';
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
 export default function ReservarPage() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className={`${inter.variable} font-sans min-h-screen bg-black`}>
       <Navbar />
-      <section className="py-12 sm:py-20 bg-background">
+      <section className="py-12 sm:py-20 bg-background font-sans">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {!bookingSuccess ? (
             <>

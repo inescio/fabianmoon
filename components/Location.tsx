@@ -2,6 +2,13 @@
 
 import { MessageCircle, MapPin, Phone, Clock, Mail } from 'lucide-react';
 import { Button } from './Button';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const Location = () => {
   const whatsappNumber = '5493804123456';
@@ -10,7 +17,7 @@ export const Location = () => {
   };
 
   return (
-    <section id="ubicacion" className="py-12 sm:py-20 bg-background">
+    <section id="ubicacion" className={`${inter.variable} font-sans py-12 sm:py-20 bg-background`}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 sm:mb-16 animate-fade-in">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">
@@ -24,7 +31,7 @@ export const Location = () => {
 
         <div className="grid lg:grid-cols-2 gap-8 sm:gap-12">
           <div className="space-y-6 sm:space-y-8 animate-fade-in">
-            <div className="glass rounded-2xl p-6 sm:p-8 space-y-4 sm:space-y-6">
+            <div className="glass rounded-2xl p-6 sm:p-8 space-y-4 sm:space-y-6 font-sans">
               <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gradient-gold">
                 Información de Contacto
               </h3>
