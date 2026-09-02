@@ -50,8 +50,20 @@ export interface Service {
   name: string;
   description: string;
   duration_minutes: number;
+  /** Precio en ARS. 0 mientras no se haya cargado. */
+  price: number;
+  /** Si es true, el turno solo se confirma con la seña pagada. */
+  requires_deposit: boolean;
   created_at: string;
 }
+
+export type PaymentStatus =
+  | 'not_required'
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'refunded'
+  | 'expired';
 
 export interface Appointment {
   id: string;
@@ -63,6 +75,19 @@ export interface Appointment {
   appointment_time: string;
   professional_id: string | null;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  /** Total de los servicios al momento de reservar. */
+  total_amount: number;
+  /** Seña cobrada / a cobrar por MercadoPago. */
+  deposit_amount: number;
+  payment_status: PaymentStatus;
+  /** ID del pago en MercadoPago. */
+  payment_id: string | null;
+  /** ID de la preferencia de Checkout Pro. */
+  preference_id: string | null;
+  payment_method: string | null;
+  paid_at: string | null;
+  /** Hasta cuándo se reserva el horario esperando el pago. */
+  hold_expires_at: string | null;
   created_at: string;
 }
 

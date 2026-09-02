@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:mp": "node scripts/check-mercadopago.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.0.2",
@@ -15,6 +16,7 @@
     "clsx": "^2.0.0",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.294.0",
+    "mercadopago": "^3.6.0",
     "next": "^14.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

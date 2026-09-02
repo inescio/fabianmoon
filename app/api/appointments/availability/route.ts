@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { generateTimeSlots, timeToMinutes, calculateTotalDuration } from '@/lib/booking-utils';
 
+// Lee query params: nunca se puede prerenderizar.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;

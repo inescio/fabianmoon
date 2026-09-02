@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!supabase) {
+    if (!supabaseAdmin) {
       return NextResponse.json(
         { error: 'Supabase no está configurado. Por favor configura las variables de entorno.' },
         { status: 503 }
@@ -18,7 +18,7 @@ export async function PUT(
     const { professional_id, status } = body;
 
     // Validar que el turno existe
-    const { data: existingAppointment, error: fetchError } = await supabase
+    const { data: existingAppointment, error: fetchError } = await supabaseAdmin
       .from('appointments')
       .select('*')
       .eq('id', id)
@@ -50,7 +50,7 @@ export async function PUT(
     }
 
     // Actualizar el turno
-    const { data: updatedAppointment, error: updateError } = await supabase
+    const { data: updatedAppointment, error: updateError } = await supabaseAdmin
       .from('appointments')
       .update(updates)
       .eq('id', id)
@@ -96,7 +96,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!supabase) {
+    if (!supabaseAdmin) {
       return NextResponse.json(
         { error: 'Supabase no está configurado. Por favor configura las variables de entorno.' },
         { status: 503 }
@@ -106,7 +106,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Verificar que el turno existe
-    const { data: existingAppointment, error: fetchError } = await supabase
+    const { data: existingAppointment, error: fetchError } = await supabaseAdmin
       .from('appointments')
       .select('*')
       .eq('id', id)
@@ -119,8 +119,39 @@ export async function DELETE(
       );
     }
 
+    // Un turno con seña cobrada no se borra: hay plata de por medio y el
+    // historial de pagos tiene que seguir apuntando a algo. Lo marcamos
+    // cancelado, que libera el horario igual (la búsqueda de conflictos
+    // solo mira 'pending' y 'confirmed').
+    const hasPayment =
+      existingAppointment.payment_status === 'approved' || !!existingAppointment.payment_id;
+
+    if (hasPayment) {
+      const { error: cancelError } = await supabaseAdmin
+        .from('appointments')
+        .update({ status: 'cancelled' })
+        .eq('id', id);
+
+      if (cancelError) {
+        console.error('Error cancelling paid appointment:', cancelError);
+        return NextResponse.json(
+          { error: 'Error al cancelar el turno' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        refundRequired: existingAppointment.payment_status === 'approved',
+        message:
+          existingAppointment.payment_status === 'approved'
+            ? 'Turno cancelado. La seña ya cobrada hay que devolverla desde el panel de MercadoPago.'
+            : 'Turno cancelado exitosamente',
+      });
+    }
+
     // Eliminar el turno (las relaciones en appointment_services se eliminarán automáticamente por CASCADE)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('appointments')
       .delete()
       .eq('id', id);

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Loader2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Calendar } from '@/components/ui/calendar';
 import { supabase, Service, Professional } from '@/lib/supabase';
 import { generateTimeSlots, formatDate, isValidEmail, isValidPhone } from '@/lib/booking-utils';
+import { computeBookingTotals, formatCurrency, PAYMENT_HOLD_MINUTES, BookingTotals } from '@/lib/pricing';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,13 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
   // Errores
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Total y seña de la selección actual. El servidor recalcula esto contra
+  // la base antes de cobrar; acá es solo para mostrárselo al cliente.
+  const totals = useMemo(
+    () => computeBookingTotals(services.filter((service) => selectedServices.includes(service.id))),
+    [services, selectedServices]
+  );
+
   // Servicios por defecto (fallback cuando Supabase no está disponible)
   const defaultServices: Service[] = [
     {
@@ -56,6 +64,8 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       name: 'Corte Hombre',
       description: 'Cortes modernos y clásicos adaptados a tu estilo personal',
       duration_minutes: 45,
+      price: 15000,
+      requires_deposit: false,
       created_at: new Date().toISOString(),
     },
     {
@@ -63,6 +73,8 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       name: 'Corte Mujer',
       description: 'Estilos personalizados que realzan tu belleza natural',
       duration_minutes: 45,
+      price: 18000,
+      requires_deposit: false,
       created_at: new Date().toISOString(),
     },
     {
@@ -70,6 +82,8 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       name: 'Coloración / Balayage',
       description: 'Técnicas avanzadas de color para un look único y sofisticado',
       duration_minutes: 90,
+      price: 40000,
+      requires_deposit: true,
       created_at: new Date().toISOString(),
     },
     {
@@ -77,6 +91,8 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       name: 'Tratamientos Capilares',
       description: 'Keratina, botox capilar e hidratación profunda',
       duration_minutes: 90,
+      price: 38000,
+      requires_deposit: true,
       created_at: new Date().toISOString(),
     },
     {
@@ -84,6 +100,8 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       name: 'Barbería Clásica',
       description: 'Afeitado tradicional y perfilado de barba con navaja',
       duration_minutes: 45,
+      price: 14000,
+      requires_deposit: false,
       created_at: new Date().toISOString(),
     },
     {
@@ -91,6 +109,8 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       name: 'Peinados de Evento',
       description: 'Looks exclusivos para bodas, eventos y ocasiones especiales',
       duration_minutes: 120,
+      price: 35000,
+      requires_deposit: true,
       created_at: new Date().toISOString(),
     },
     {
@@ -98,6 +118,8 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       name: 'Mechas y Reflejos',
       description: 'Técnicas de mechas californianas y reflejos que iluminan tu rostro',
       duration_minutes: 120,
+      price: 45000,
+      requires_deposit: true,
       created_at: new Date().toISOString(),
     },
     {
@@ -105,6 +127,8 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       name: 'Alisado y Keratina',
       description: 'Tratamientos profesionales para cabello liso y sedoso',
       duration_minutes: 120,
+      price: 42000,
+      requires_deposit: true,
       created_at: new Date().toISOString(),
     },
   ];
@@ -285,6 +309,13 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
       const data = await response.json();
 
       if (response.ok) {
+        // Con seña, el turno queda pre-reservado y se confirma al pagar:
+        // mandamos al cliente al checkout de MercadoPago.
+        if (data.requiresPayment && data.checkoutUrl) {
+          window.location.href = data.checkoutUrl;
+          return;
+        }
+
         if (onSuccess) {
           onSuccess();
         } else {
@@ -402,7 +433,7 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
                         : 'border-2 border-transparent'
                     )}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="font-semibold text-foreground mb-1">
                           {service.name}
@@ -410,12 +441,24 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
                         <p className="text-base text-foreground/70">
                           {service.description}
                         </p>
-                        <p className="text-sm text-accent mt-2">
-                          Duración: {service.duration_minutes} min
-                        </p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+                          <span className="text-sm text-accent">
+                            {service.duration_minutes} min
+                          </span>
+                          {Number(service.price) > 0 && (
+                            <span className="text-sm font-semibold text-foreground">
+                              {formatCurrency(Number(service.price))}
+                            </span>
+                          )}
+                          {service.requires_deposit && (
+                            <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
+                              Requiere seña
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {selectedServices.includes(service.id) && (
-                        <Check className="h-5 w-5 text-accent" />
+                        <Check className="h-5 w-5 text-accent shrink-0" />
                       )}
                     </div>
                   </button>
@@ -424,6 +467,7 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
               {errors.services && (
                 <p className="text-base text-red-400">{errors.services}</p>
               )}
+              {totals.total > 0 && <ResumenPago totals={totals} />}
             </motion.div>
           )}
 
@@ -629,6 +673,7 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
                   />
                 </div>
               </div>
+              {totals.total > 0 && <ResumenPago totals={totals} />}
             </motion.div>
           )}
         </AnimatePresence>
@@ -654,8 +699,10 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Reservando...
+                  {totals.requiresDeposit ? 'Redirigiendo al pago...' : 'Reservando...'}
                 </>
+              ) : totals.requiresDeposit ? (
+                `Pagar seña ${formatCurrency(totals.depositAmount)}`
               ) : (
                 'Confirmar Reserva'
               )}
@@ -675,3 +722,47 @@ export function BookingForm({ onSuccess }: BookingFormProps) {
   );
 }
 
+/**
+ * Desglose de lo que se paga ahora y lo que queda para el salón.
+ * Solo aparece cuando los servicios tienen precio cargado.
+ */
+function ResumenPago({ totals }: { totals: BookingTotals }) {
+  return (
+    <div className="rounded-xl border border-border bg-secondary/40 p-4 sm:p-5 space-y-2">
+      <div className="flex items-center justify-between text-base">
+        <span className="text-foreground/60">Total de los servicios</span>
+        <span className="font-semibold text-foreground">{formatCurrency(totals.total)}</span>
+      </div>
+
+      {totals.requiresDeposit ? (
+        <>
+          <div className="flex items-center justify-between text-base">
+            <span className="text-foreground/60">
+              Seña para reservar ({totals.depositPercentage}%)
+            </span>
+            <span className="font-semibold text-accent">
+              {formatCurrency(totals.depositAmount)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-base">
+            <span className="text-foreground/60">A abonar en el salón</span>
+            <span className="text-foreground/90">{formatCurrency(totals.balance)}</span>
+          </div>
+          <p className="flex items-start gap-2 pt-3 border-t border-border text-sm text-foreground/60">
+            <ShieldCheck className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+            <span>
+              Alguno de los servicios elegidos requiere seña. Vas a pagarla de forma
+              segura con MercadoPago y tu turno queda confirmado al acreditarse.
+              Guardamos el horario {PAYMENT_HOLD_MINUTES} minutos mientras completás el pago.
+            </span>
+          </p>
+        </>
+      ) : (
+        <p className="flex items-start gap-2 pt-3 border-t border-border text-sm text-foreground/60">
+          <ShieldCheck className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+          <span>Estos servicios no requieren seña: abonás todo en el salón.</span>
+        </p>
+      )}
+    </div>
+  );
+}

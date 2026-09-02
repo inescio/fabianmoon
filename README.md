@@ -104,6 +104,84 @@ Cuando descargues las fuentes personalizadas:
 
 El código ya está preparado con comentarios TODO para facilitar el cambio.
 
+## Pagos con MercadoPago (señas)
+
+Los servicios marcados con `requires_deposit` exigen una seña para reservar.
+La seña es un porcentaje del total de la reserva (`NEXT_PUBLIC_DEPOSIT_PERCENTAGE`,
+30% por defecto) y se cobra con **Checkout Pro**.
+
+### Puesta en marcha
+
+1. **Base de datos**: correr las migraciones de `supabase/migrations/` en orden,
+   desde el SQL Editor de Supabase o con `psql`:
+
+   | Migración | Qué hace |
+   | --- | --- |
+   | `20260901000000_initial_schema.sql` | Tablas base, RLS y catálogo de servicios |
+   | `20260902000000_mercadopago_checkout.sql` | Precios, estado de pago y `payment_events` |
+   | `20260903000000_precios_iniciales.sql` | Precios y qué servicios exigen seña |
+
+   Son idempotentes: se pueden volver a correr sin romper nada.
+
+2. **Ajustar precios**: los de `20260903000000` son de referencia. El precio de la
+   base es el único que manda a la hora de cobrar, así que hay que dejarlo en los
+   valores reales. Un servicio con `requires_deposit = true` y precio 0 no cobra nada.
+
+3. **Variables de entorno**: copiar `.env.example` a `.env.local` y completar.
+   Las credenciales de MercadoPago salen de
+   [Tus integraciones](https://www.mercadopago.com.ar/developers/panel/app).
+
+4. **Webhook**: en el panel de MercadoPago > Tus integraciones > Webhooks, dar de alta
+
+   ```
+   https://TU-DOMINIO/api/payments/webhook
+   ```
+
+   con el evento **Pagos**, y copiar la "Clave secreta" a `MP_WEBHOOK_SECRET`.
+
+### Cómo funciona el flujo
+
+1. El cliente elige servicios y ve el desglose: total, seña y saldo a pagar en el salón.
+2. Al confirmar, el turno se crea como `pending` con `payment_status = 'pending'` y el
+   horario queda retenido `NEXT_PUBLIC_PAYMENT_HOLD_MINUTES` minutos.
+3. Se lo redirige al Checkout Pro de MercadoPago.
+4. Al volver, `/reservar/pago` consulta el estado real del pago.
+5. El webhook (o esa misma consulta) marca el pago como aprobado y pasa el turno a
+   `confirmed`.
+6. Si nunca paga, al vencer la retención el turno se cancela y el horario se libera solo.
+
+Los importes **siempre** se recalculan en el servidor contra la base: lo que manda el
+navegador solo indica qué servicios se eligieron.
+
+### Acceso a los datos
+
+`services` y `professionals` son de lectura pública: el navegador los consulta con la
+anon key para armar el formulario.
+
+`appointments`, `appointment_services` y `payment_events` tienen RLS activo y **ninguna
+policy**, porque guardan nombre, teléfono y email de los clientes y la anon key es
+pública. Solo los alcanza la `service_role`, desde el servidor. Por eso
+`SUPABASE_SERVICE_ROLE_KEY` es obligatoria: sin ella no se puede reservar ni cobrar.
+
+### Verificar la conexión
+
+```bash
+npm run check:mp
+```
+
+Revisa de una las variables de entorno, el esquema de Supabase, los precios
+cargados, las credenciales de MercadoPago y si el webhook es alcanzable.
+Solo lee; lo único que crea es una preferencia de prueba para confirmar que la
+API acepta el payload real de la app.
+
+### Probar en desarrollo
+
+Con credenciales `TEST-`, MercadoPago da
+[usuarios y tarjetas de prueba](https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/additional-content/test-cards).
+El webhook no llega a `localhost`, pero la pantalla de vuelta consulta el pago
+directo a la API, así que el flujo se puede probar entero igual. Para recibir el
+webhook localmente, exponé el puerto con `ngrok` y usá esa URL en `NEXT_PUBLIC_SITE_URL`.
+
 ## Notas
 
 - El proyecto usa el App Router de Next.js 14

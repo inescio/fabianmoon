@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, User, Mail, Phone, Scissors, CheckCircle, XCircle, Loader2, LogOut } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, Scissors, CheckCircle, XCircle, Loader2, LogOut, Wallet } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { AppointmentWithDetails, Professional } from '@/lib/supabase';
 import { formatDate, getDayName } from '@/lib/booking-utils';
+import { formatCurrency, getPaymentStatusLabel } from '@/lib/pricing';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -20,10 +21,11 @@ export function ManagementDashboard() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string>('');
 
   useEffect(() => {
     loadData();
-  }, [selectedDate, selectedProfessionalId, selectedStatus]);
+  }, [selectedDate, selectedProfessionalId, selectedStatus, selectedPaymentStatus]);
 
   const loadData = async () => {
     setLoading(true);
@@ -32,6 +34,7 @@ export function ManagementDashboard() {
       if (selectedDate) params.append('date', selectedDate);
       if (selectedProfessionalId) params.append('professionalId', selectedProfessionalId);
       if (selectedStatus) params.append('status', selectedStatus);
+      if (selectedPaymentStatus) params.append('paymentStatus', selectedPaymentStatus);
 
       const [appointmentsRes, professionalsRes] = await Promise.all([
         fetch(`/api/appointments?${params}`).then(r => r.json()),
@@ -102,10 +105,16 @@ export function ManagementDashboard() {
         method: 'DELETE',
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (response.ok) {
+        // Una seña ya acreditada no se devuelve sola: hay que hacerlo desde
+        // el panel de MercadoPago, así que se lo avisamos explícitamente.
+        if (data.refundRequired) {
+          alert(data.message);
+        }
         await loadData();
       } else {
-        const data = await response.json();
         alert(data.error || 'Error al cancelar el turno');
       }
     } catch (error) {
@@ -128,6 +137,22 @@ export function ManagementDashboard() {
         return 'text-red-400';
       default:
         return 'text-foreground/60';
+    }
+  };
+
+  const getPaymentStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-green-400/15 text-green-400';
+      case 'pending':
+        return 'bg-yellow-400/15 text-yellow-400';
+      case 'rejected':
+      case 'expired':
+        return 'bg-red-400/15 text-red-400';
+      case 'refunded':
+        return 'bg-orange-400/15 text-orange-400';
+      default:
+        return 'bg-foreground/10 text-foreground/60';
     }
   };
 
@@ -180,7 +205,7 @@ export function ManagementDashboard() {
       {/* Filtros */}
       <div className="glass rounded-2xl p-6">
         <h2 className="text-xl font-bold mb-4">Filtros</h2>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-base font-medium mb-2">Fecha</label>
             <input
@@ -219,13 +244,29 @@ export function ManagementDashboard() {
               <option value="cancelled">Cancelado</option>
             </select>
           </div>
+          <div>
+            <label className="block text-base font-medium mb-2">Pago</label>
+            <select
+              value={selectedPaymentStatus}
+              onChange={(e) => setSelectedPaymentStatus(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">Todos</option>
+              <option value="approved">Seña pagada</option>
+              <option value="pending">Pago pendiente</option>
+              <option value="rejected">Pago rechazado</option>
+              <option value="expired">Pago vencido</option>
+              <option value="not_required">Sin seña</option>
+            </select>
+          </div>
         </div>
-        {(selectedDate || selectedProfessionalId || selectedStatus) && (
+        {(selectedDate || selectedProfessionalId || selectedStatus || selectedPaymentStatus) && (
           <button
             onClick={() => {
               setSelectedDate('');
               setSelectedProfessionalId('');
               setSelectedStatus('');
+              setSelectedPaymentStatus('');
             }}
             className="mt-4 text-base text-accent hover:underline"
           >
@@ -252,6 +293,7 @@ export function ManagementDashboard() {
                 onCancel={handleCancel}
                 getStatusColor={getStatusColor}
                 getStatusLabel={getStatusLabel}
+                getPaymentStatusColor={getPaymentStatusColor}
               />
             ))}
           </div>
@@ -280,6 +322,7 @@ export function ManagementDashboard() {
                 onCancel={handleCancel}
                 getStatusColor={getStatusColor}
                 getStatusLabel={getStatusLabel}
+                getPaymentStatusColor={getPaymentStatusColor}
               />
             ))}
           </div>
@@ -298,6 +341,7 @@ interface AppointmentCardProps {
   onCancel: (appointmentId: string) => void;
   getStatusColor: (status: string) => string;
   getStatusLabel: (status: string) => string;
+  getPaymentStatusColor: (status: string) => string;
 }
 
 function AppointmentCard({
@@ -309,6 +353,7 @@ function AppointmentCard({
   onCancel,
   getStatusColor,
   getStatusLabel,
+  getPaymentStatusColor,
 }: AppointmentCardProps) {
   const appointmentDate = new Date(appointment.appointment_date);
   const isUnassigned = !appointment.professional_id;
@@ -333,6 +378,15 @@ function AppointmentCard({
                 Sin asignar
               </span>
             )}
+            <span
+              className={cn(
+                'text-sm px-2 py-1 rounded flex items-center gap-1',
+                getPaymentStatusColor(appointment.payment_status)
+              )}
+            >
+              <Wallet className="h-3.5 w-3.5" />
+              {getPaymentStatusLabel(appointment.payment_status)}
+            </span>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3 text-base">
@@ -377,6 +431,35 @@ function AppointmentCard({
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {Number(appointment.total_amount) > 0 && (
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+              <span className="text-foreground/60">
+                Total:{' '}
+                <span className="text-foreground/90 font-medium">
+                  {formatCurrency(Number(appointment.total_amount))}
+                </span>
+              </span>
+              {Number(appointment.deposit_amount) > 0 && (
+                <>
+                  <span className="text-foreground/60">
+                    Seña:{' '}
+                    <span className="text-accent font-medium">
+                      {formatCurrency(Number(appointment.deposit_amount))}
+                    </span>
+                  </span>
+                  <span className="text-foreground/60">
+                    Resta:{' '}
+                    <span className="text-foreground/90 font-medium">
+                      {formatCurrency(
+                        Number(appointment.total_amount) - Number(appointment.deposit_amount)
+                      )}
+                    </span>
+                  </span>
+                </>
+              )}
             </div>
           )}
 
