@@ -120,6 +120,7 @@ La seña es un porcentaje del total de la reserva (`NEXT_PUBLIC_DEPOSIT_PERCENTA
    | `20260901000000_initial_schema.sql` | Tablas base, RLS y catálogo de servicios |
    | `20260902000000_mercadopago_checkout.sql` | Precios, estado de pago y `payment_events` |
    | `20260903000000_precios_iniciales.sql` | Precios y qué servicios exigen seña |
+   | `20260904000000_tienda.sql` | Productos, órdenes y catálogo de la tienda |
 
    Son idempotentes: se pueden volver a correr sin romper nada.
 
@@ -153,6 +154,39 @@ La seña es un porcentaje del total de la reserva (`NEXT_PUBLIC_DEPOSIT_PERCENTA
 Los importes **siempre** se recalculan en el servidor contra la base: lo que manda el
 navegador solo indica qué servicios se eligieron.
 
+### La tienda
+
+`/tienda` es un flujo de e-commerce clásico, separado del de turnos:
+
+| Ruta | Qué hace |
+| --- | --- |
+| `/tienda` | Listado de productos con precio y stock |
+| `/tienda/carrito` | Líneas, cantidades, datos del comprador y pago |
+| `/tienda/pago` | Vuelta del checkout, con el estado real del pago |
+
+Comparte con las señas la infraestructura de cobro —preferencia, webhook,
+conciliación y `payment_events`— pero no el modelo: una orden se paga entera y
+al instante, un turno paga una seña y retiene un horario.
+
+El carrito vive en `localStorage` y guarda solo `{ productId: cantidad }`.
+Nombres y precios se releen del servidor en cada pantalla, así una lista de
+precios vieja guardada en el navegador no puede alterar lo que se cobra. El
+servidor recalcula todo igual antes de crear la preferencia.
+
+A diferencia de la seña, la preferencia de la tienda lleva **una línea por
+producto** con su cantidad y precio unitario reales: lo que el comprador ve en
+el carrito es exactamente lo que ve en el checkout.
+
+**Qué distingue un pago de otro.** El `external_reference` va prefijado:
+`order:<uuid>` o `appointment:<uuid>`. Es lo único que MercadoPago devuelve
+intacto en la notificación, y con eso el webhook sabe qué actualizar. Los turnos
+creados antes de que existiera la tienda mandaban el uuid pelado; esos se
+siguen interpretando como turnos.
+
+**Stock.** Se valida al crear la orden, pero **no se descuenta** al pagar. Es
+informativo para el listado; si la tienda crece, hay que descontarlo desde el
+webhook y reponerlo ante una devolución.
+
 ### Acceso a los datos
 
 `services` y `professionals` son de lectura pública: el navegador los consulta con la
@@ -173,6 +207,40 @@ Revisa de una las variables de entorno, el esquema de Supabase, los precios
 cargados, las credenciales de MercadoPago y si el webhook es alcanzable.
 Solo lee; lo único que crea es una preferencia de prueba para confirmar que la
 API acepta el payload real de la app.
+
+### Deploy en Vercel
+
+Variables de entorno del proyecto (Settings > Environment Variables):
+
+| Variable | Valor |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | La URL del proyecto de Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase > Settings > API > `anon` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase > Settings > API > `service_role` |
+| `MP_ACCESS_TOKEN` | Credenciales de MercadoPago |
+| `MP_WEBHOOK_SECRET` | Recién existe después de registrar el webhook |
+| `NEXT_PUBLIC_SITE_URL` | El dominio de producción, sin barra final |
+| `MP_BINARY_MODE` | Opcional, default `true`. Solo afecta a la tienda |
+| `MP_MAX_INSTALLMENTS` | Opcional, default 12 |
+| `NEXT_PUBLIC_DEPOSIT_PERCENTAGE` | Opcional, default 30 |
+| `NEXT_PUBLIC_PAYMENT_HOLD_MINUTES` | Opcional, default 30 |
+
+`SUPABASE_DB_URL` **no va en Vercel**: solo se usa para correr migraciones
+desde la terminal.
+
+Las `NEXT_PUBLIC_*` se compilan dentro del bundle, así que **cambiarlas exige
+volver a deployar**. De ahí el orden:
+
+1. Primer deploy con las claves de Supabase y `MP_ACCESS_TOKEN`. `NEXT_PUBLIC_SITE_URL`
+   todavía puede faltar: el código cae a `VERCEL_URL`.
+2. Con el dominio ya asignado, cargar `NEXT_PUBLIC_SITE_URL` y redeployar.
+   Tiene que ser el dominio **estable**, no el de un deploy puntual: `VERCEL_URL`
+   cambia en cada push y dejaría el webhook apuntando a una URL muerta.
+3. Registrar el webhook en MercadoPago con ese dominio, copiar la clave secreta a
+   `MP_WEBHOOK_SECRET` y redeployar.
+
+Si activás Deployment Protection, dejá producción pública: MercadoPago no puede
+autenticarse y el webhook recibiría un 401.
 
 ### Probar en desarrollo
 

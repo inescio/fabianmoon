@@ -92,6 +92,12 @@ export const Navbar = () => {
                 {link.label}
               </button>
             ))}
+            <Link
+              href="/tienda"
+              className="text-sm lg:text-base text-foreground/80 hover:text-accent transition-colors font-medium"
+            >
+              Tienda
+            </Link>
             <Link href="/reservar">
               <Button
                 className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold shadow-gold-glow text-sm lg:text-base px-4 lg:px-6 py-2"
@@ -125,6 +131,12 @@ export const Navbar = () => {
                 {link.label}
               </button>
             ))}
+            <Link
+              href="/tienda"
+              className="block w-full text-left text-foreground/80 hover:text-accent transition-colors font-medium py-2"
+            >
+              Tienda
+            </Link>
             <Link href="/reservar">
               <Button
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"

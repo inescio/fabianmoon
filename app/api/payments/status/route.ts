@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getPaymentClient, isMercadoPagoConfigured } from '@/lib/mercadopago';
-import { reconcilePayment } from '@/lib/payments';
+import { reconcilePayment, buildExternalReference, PaymentTarget } from '@/lib/payments';
 
 /**
- * Estado de pago de un turno, para la pantalla de vuelta del checkout.
+ * Estado de pago de un turno o de una orden, para la pantalla de vuelta
+ * del checkout.
  *
- * GET /api/payments/status?appointment=<uuid>&payment_id=<id opcional>
+ * GET /api/payments/status?appointment=<uuid>[&payment_id=<id>]
+ * GET /api/payments/status?order=<uuid>[&payment_id=<id>]
  *
  * No alcanza con esperar el webhook: en desarrollo nunca llega a localhost
- * y en producción puede demorar unos segundos. Si el turno sigue pendiente,
- * este endpoint consulta MercadoPago y concilia en el momento.
+ * y en producción puede demorar unos segundos. Si sigue pendiente, este
+ * endpoint consulta MercadoPago y concilia en el momento.
  */
 
 export const runtime = 'nodejs';
@@ -18,22 +20,41 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   if (!supabaseAdmin) {
-    return NextResponse.json(
-      { error: 'Supabase no está configurado' },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 503 });
   }
 
   const searchParams = request.nextUrl.searchParams;
   const appointmentId = searchParams.get('appointment');
+  const orderId = searchParams.get('order');
   const paymentIdParam = searchParams.get('payment_id') || searchParams.get('collection_id');
 
-  if (!appointmentId) {
+  const target: PaymentTarget | null = orderId
+    ? { kind: 'order', id: orderId }
+    : appointmentId
+      ? { kind: 'appointment', id: appointmentId }
+      : null;
+
+  if (!target) {
     return NextResponse.json(
-      { error: 'Falta el identificador del turno' },
+      { error: 'Falta el identificador del turno o de la orden' },
       { status: 400 }
     );
   }
+
+  const isOrder = target.kind === 'order';
+
+  // Cada consulta va con su select inline: el parser de tipos de Supabase
+  // necesita verlo literal para inferir la forma del resultado.
+  const loadOrder = async () =>
+    supabaseAdmin!
+      .from('orders')
+      .select(`
+        id, buyer_name, buyer_surname, buyer_email, total_amount, status,
+        payment_status, payment_method, paid_at, created_at,
+        items:order_items(id, product_name, unit_price, quantity)
+      `)
+      .eq('id', target.id)
+      .single();
 
   const loadAppointment = async () =>
     supabaseAdmin!
@@ -43,26 +64,32 @@ export async function GET(request: NextRequest) {
         total_amount, deposit_amount, payment_status, payment_method, paid_at, hold_expires_at,
         services:appointment_services(service:services(id, name, price))
       `)
-      .eq('id', appointmentId)
+      .eq('id', target.id)
       .single();
 
-  let { data: appointment, error } = await loadAppointment();
+  const load = async (): Promise<{ data: any; error: unknown }> =>
+    isOrder ? await loadOrder() : await loadAppointment();
 
-  if (error || !appointment) {
-    return NextResponse.json({ error: 'Turno no encontrado' }, { status: 404 });
+  let { data: record, error } = await load();
+
+  if (error || !record) {
+    return NextResponse.json(
+      { error: isOrder ? 'Orden no encontrada' : 'Turno no encontrado' },
+      { status: 404 }
+    );
   }
 
   // Si todavía figura pendiente, preguntamos directo a MercadoPago.
-  if (appointment.payment_status === 'pending' && isMercadoPagoConfigured()) {
+  if (record.payment_status === 'pending' && isMercadoPagoConfigured()) {
     let paymentId = paymentIdParam;
 
     // El navegador no siempre vuelve con el payment_id (por ejemplo si el
-    // cliente cerró la pestaña): lo buscamos por external_reference.
+    // comprador cerró la pestaña): lo buscamos por external_reference.
     if (!paymentId) {
       try {
         const search = await getPaymentClient().search({
           options: {
-            external_reference: appointmentId,
+            external_reference: buildExternalReference(target),
             sort: 'date_created',
             criteria: 'desc',
             limit: 5,
@@ -73,25 +100,33 @@ export async function GET(request: NextRequest) {
         const approved = results.find((p) => p.status === 'approved');
         paymentId = (approved?.id ?? results[0]?.id)?.toString() ?? null;
       } catch (searchError) {
-        console.error('Error buscando pagos del turno:', searchError);
+        console.error('Error buscando pagos:', searchError);
       }
     }
 
     if (paymentId) {
       const result = await reconcilePayment(paymentId);
       if (result.ok) {
-        const refreshed = await loadAppointment();
-        if (refreshed.data) appointment = refreshed.data;
+        const refreshed = await load();
+        if (refreshed.data) record = refreshed.data;
       }
     }
   }
 
+  if (isOrder) {
+    return NextResponse.json({
+      order: record,
+      paymentStatus: record.payment_status,
+      status: record.status,
+    });
+  }
+
   return NextResponse.json({
     appointment: {
-      ...appointment,
-      services: (appointment as any).services?.map((as: any) => as.service) || [],
+      ...record,
+      services: record.services?.map((as: any) => as.service) || [],
     },
-    paymentStatus: appointment.payment_status,
-    status: appointment.status,
+    paymentStatus: record.payment_status,
+    status: record.status,
   });
 }

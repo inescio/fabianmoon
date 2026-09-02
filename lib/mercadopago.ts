@@ -101,6 +101,22 @@ export function verifyWebhookSignature(params: {
   return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
 }
 
+/**
+ * Modo binario: el pago sale aprobado o rechazado, nunca queda "en proceso".
+ *
+ * Tiene sentido en la tienda, donde el producto se entrega contra pago.
+ * No lo usamos en la seña de un turno: ahí un pago en proceso todavía
+ * sirve para retener el horario.
+ */
+export const MP_BINARY_MODE = process.env.MP_BINARY_MODE !== 'false';
+
+/** Tope de cuotas que ofrece el checkout. */
+export const MP_MAX_INSTALLMENTS = (() => {
+  const parsed = Number(process.env.MP_MAX_INSTALLMENTS ?? 12);
+  if (!Number.isFinite(parsed) || parsed < 1) return 12;
+  return Math.min(24, Math.floor(parsed));
+})();
+
 /** Estados de pago de MP mapeados a los nuestros. */
 export type LocalPaymentStatus =
   | 'pending'

@@ -155,9 +155,30 @@ if (isPlaceholder(supabaseUrl) || isPlaceholder(supabaseKey)) {
     if (appointments.ok) ok('appointments tiene las columnas de pago');
     else fail(`appointments: ${appointments.body?.message || appointments.status}`);
 
-    const events = await supabaseGet('payment_events?select=id&limit=1');
-    if (events.ok) ok('payment_events existe y es legible');
+    const events = await supabaseGet('payment_events?select=id,order_id&limit=1');
+    if (events.ok) ok('payment_events existe y sirve a los dos flujos');
     else fail(`payment_events: ${events.body?.message || events.status}`);
+
+    const productos = await supabaseGet('products?select=id,name,price,stock,active');
+    if (productos.ok) {
+      const activos = (productos.body || []).filter((p) => p.active !== false);
+      if (activos.length === 0) warn('La tienda no tiene productos activos');
+      else ok(`Tienda: ${activos.length} productos activos`);
+
+      const sinPrecio = activos.filter((p) => Number(p.price) <= 0);
+      if (sinPrecio.length > 0) {
+        fail(`Productos sin precio: ${sinPrecio.map((p) => p.name).join(', ')}`);
+      }
+    } else {
+      fail(
+        `products: ${productos.body?.message || productos.status}. ` +
+        '¿Corriste supabase/migrations/20260904000000_tienda.sql?'
+      );
+    }
+
+    const ordenes = await supabaseGet('orders?select=id,payment_status&limit=1');
+    if (ordenes.ok) ok('orders existe y es legible');
+    else fail(`orders: ${ordenes.body?.message || ordenes.status}`);
   } catch (error) {
     fail(`No se pudo consultar Supabase: ${error.message}`);
   }
@@ -241,20 +262,42 @@ if (!credencialesOk) {
         'X-Idempotency-Key': `diagnostico-${Date.now()}`,
       },
       body: JSON.stringify({
-        items: [{
-          id: 'diagnostico',
-          title: 'Seña de reserva - diagnóstico',
-          category_id: 'services',
-          quantity: 1,
-          currency_id: 'ARS',
-          unit_price: 1000,
-        }],
-        external_reference: 'diagnostico',
+        // Dos líneas con cantidades distintas: es el caso de la tienda y
+        // el que más campos del checklist de calidad pone a prueba.
+        items: [
+          {
+            id: 'diagnostico-1',
+            title: 'Producto de diagnóstico A',
+            description: 'Línea de prueba con cantidad mayor a uno',
+            category_id: 'beauty_care',
+            quantity: 2,
+            currency_id: 'ARS',
+            unit_price: 1000,
+          },
+          {
+            id: 'diagnostico-2',
+            title: 'Producto de diagnóstico B',
+            description: 'Segunda línea de prueba',
+            category_id: 'beauty_care',
+            quantity: 1,
+            currency_id: 'ARS',
+            unit_price: 2500,
+          },
+        ],
+        payer: {
+          name: 'Diagnóstico',
+          surname: 'De Prueba',
+          email: 'diagnostico@testuser.com',
+          phone: { area_code: '380', number: '4123456' },
+          identification: { type: 'DNI', number: '30123456' },
+        },
+        binary_mode: true,
+        external_reference: 'order:diagnostico',
         back_urls: { success: returnUrl, pending: returnUrl, failure: returnUrl },
         ...(siteUrl.startsWith('https://') ? { auto_return: 'approved' } : {}),
         notification_url: `${siteUrl}/api/payments/webhook`,
         statement_descriptor: 'FABIAN MOON',
-        payment_methods: { excluded_payment_types: [{ id: 'ticket' }, { id: 'atm' }] },
+        payment_methods: { installments: 12 },
         expires: true,
         date_of_expiration: `${expira.toISOString().replace('Z', '')}+00:00`,
       }),
@@ -263,6 +306,12 @@ if (!credencialesOk) {
 
     if (response.ok) {
       ok('MercadoPago acepta el payload de checkout de la app');
+      const totalMp = (preference.items || []).reduce(
+        (sum, item) => sum + item.unit_price * item.quantity,
+        0
+      );
+      if (totalMp === 4500) ok('Los importes del carrito llegan intactos al checkout');
+      else fail(`El total en MercadoPago es ${totalMp} y debería ser 4500`);
       console.log(`      link de prueba: ${preference.init_point}`);
     } else {
       fail(

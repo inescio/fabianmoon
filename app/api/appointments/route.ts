@@ -8,7 +8,7 @@ import {
   toMercadoPagoDate,
 } from '@/lib/mercadopago';
 import { getSiteUrl } from '@/lib/site-url';
-import { releaseExpiredHolds } from '@/lib/payments';
+import { releaseExpiredHolds, buildExternalReference } from '@/lib/payments';
 
 export async function POST(request: NextRequest) {
   try {
@@ -218,8 +218,12 @@ export async function POST(request: NextRequest) {
             email: client_email,
             phone: { number: String(client_phone) },
           },
-          // Es lo que nos permite reconocer el turno en el webhook.
-          external_reference: appointment.id,
+          // Es lo que nos permite reconocer el turno en el webhook, y
+          // distinguirlo de una orden de la tienda.
+          external_reference: buildExternalReference({
+            kind: 'appointment',
+            id: appointment.id,
+          }),
           metadata: { appointment_id: appointment.id },
           back_urls: {
             success: returnUrl,
