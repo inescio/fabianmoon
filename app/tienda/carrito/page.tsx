@@ -10,8 +10,19 @@ import { Footer } from '@/components/Footer';
 import { Product } from '@/lib/supabase';
 import { formatCurrency, roundCurrency } from '@/lib/pricing';
 import { useCart } from '@/lib/cart';
+import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+
+/**
+ * Clave pública de MercadoPago, la que puede viajar al navegador.
+ *
+ * Tiene que ser de la misma cuenta que crea la preferencia en el backend.
+ * Si falta, el checkout sigue funcionando por redirección al init_point:
+ * lo que se pierde es el botón oficial del SDK.
+ */
+const MP_PUBLIC_KEY = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || '';
+const usaWalletBrick = MP_PUBLIC_KEY.length > 0;
 
 interface Comprador {
   nombre: string;
@@ -42,6 +53,13 @@ export default function CarritoPage() {
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [errorPago, setErrorPago] = useState<string | null>(null);
+  // Con el SDK, la preferencia se crea primero y recién ahí aparece el
+  // botón oficial de MercadoPago.
+  const [preferenceId, setPreferenceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (usaWalletBrick) initMercadoPago(MP_PUBLIC_KEY, { locale: 'es-AR' });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +144,13 @@ export default function CarritoPage() {
 
       // El carrito se limpia recién cuando el pago se acredita: si acá
       // sale mal, el comprador vuelve y lo tiene intacto.
+      if (usaWalletBrick && data.preferenceId) {
+        setPreferenceId(data.preferenceId);
+        setEnviando(false);
+        return;
+      }
+
+      // Sin clave pública no hay SDK: se va derecho al checkout.
       window.location.href = data.checkoutUrl;
     } catch (err) {
       setErrorPago(err instanceof Error ? err.message : 'Error inesperado');
@@ -134,6 +159,9 @@ export default function CarritoPage() {
   };
 
   const cargando = loading || !ready;
+  // Con la preferencia creada el pedido queda congelado: tocar el carrito
+  // ahora dejaría el checkout cobrando algo distinto de lo que se ve.
+  const bloqueado = preferenceId !== null;
 
   return (
     <div className={`${inter.variable} font-sans min-h-screen bg-black`}>
@@ -186,8 +214,9 @@ export default function CarritoPage() {
                     <div className="flex items-center gap-1 rounded-lg border border-border">
                       <button
                         onClick={() => setQuantity(linea.product.id, linea.cantidad - 1)}
+                        disabled={bloqueado}
                         aria-label={`Quitar una unidad de ${linea.product.name}`}
-                        className="p-2.5 text-foreground/70 transition-colors hover:text-foreground"
+                        className="p-2.5 text-foreground/70 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
                       >
                         <Minus className="h-4 w-4" />
                       </button>
@@ -197,7 +226,8 @@ export default function CarritoPage() {
                       <button
                         onClick={() => setQuantity(linea.product.id, linea.cantidad + 1)}
                         disabled={
-                          linea.product.stock !== null && linea.cantidad >= linea.product.stock
+                          bloqueado ||
+                          (linea.product.stock !== null && linea.cantidad >= linea.product.stock)
                         }
                         aria-label={`Agregar una unidad de ${linea.product.name}`}
                         className="p-2.5 text-foreground/70 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
@@ -212,8 +242,9 @@ export default function CarritoPage() {
 
                     <button
                       onClick={() => remove(linea.product.id)}
+                      disabled={bloqueado}
                       aria-label={`Sacar ${linea.product.name} del carrito`}
-                      className="p-2 text-foreground/40 transition-colors hover:text-red-400"
+                      className="p-2 text-foreground/40 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -230,7 +261,7 @@ export default function CarritoPage() {
                   </span>
                 </div>
 
-                <div className="space-y-4 border-t border-border pt-5">
+                <fieldset disabled={bloqueado} className="space-y-4 border-t border-border pt-5 disabled:opacity-60">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Campo
                       label="Nombre"
@@ -289,26 +320,44 @@ export default function CarritoPage() {
                       onChange={(numeroDoc) => setComprador({ ...comprador, numeroDoc })}
                     />
                   </div>
-                </div>
+                </fieldset>
 
                 {errorPago && (
                   <p className="rounded-lg bg-red-400/10 p-3 text-base text-red-400">{errorPago}</p>
                 )}
 
-                <button
-                  onClick={pagar}
-                  disabled={enviando}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#009EE3] px-6 py-3.5 font-semibold text-white transition-colors hover:bg-[#008FCC] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {enviando ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Redirigiendo…
-                    </>
-                  ) : (
-                    <>Pagar con Mercado Pago</>
-                  )}
-                </button>
+                {preferenceId ? (
+                  <div className="space-y-3">
+                    {/* Botón oficial del SDK. 'payment_methods_logos' hace
+                        que debajo se rendericen los logos de los medios de
+                        pago disponibles, tal como los publica MercadoPago. */}
+                    <Wallet
+                      initialization={{ preferenceId }}
+                      customization={{ theme: 'dark', valueProp: 'payment_methods_logos' }}
+                    />
+                    <button
+                      onClick={() => setPreferenceId(null)}
+                      className="w-full text-center text-base text-accent hover:underline"
+                    >
+                      Modificar el pedido
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={pagar}
+                    disabled={enviando}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#009EE3] px-6 py-3.5 font-semibold text-white transition-colors hover:bg-[#008FCC] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {enviando ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {usaWalletBrick ? 'Preparando el pago…' : 'Redirigiendo…'}
+                      </>
+                    ) : (
+                      <>{usaWalletBrick ? 'Continuar al pago' : 'Pagar con Mercado Pago'}</>
+                    )}
+                  </button>
+                )}
 
                 <p className="flex items-start gap-2 text-sm text-foreground/60">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" />

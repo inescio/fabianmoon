@@ -238,6 +238,20 @@ if (isPlaceholder(token)) {
       if (user.site_id !== 'MLA') {
         warn(`La cuenta es de ${user.site_id} pero se cobra en ARS (MLA)`);
       }
+
+      // La clave pública tiene que ser de la misma cuenta que el token:
+      // si no, el botón del SDK no puede abrir la preferencia.
+      const publicKey = env.NEXT_PUBLIC_MP_PUBLIC_KEY;
+      if (isPlaceholder(publicKey)) {
+        warn(
+          'NEXT_PUBLIC_MP_PUBLIC_KEY sin cargar: el checkout funciona por ' +
+          'redirección, pero sin el botón oficial del SDK de front-end'
+        );
+      } else if (!publicKey.startsWith('APP_USR-') && !publicKey.startsWith('TEST-')) {
+        fail('NEXT_PUBLIC_MP_PUBLIC_KEY no parece una clave pública de MercadoPago');
+      } else {
+        ok('NEXT_PUBLIC_MP_PUBLIC_KEY cargada (el SDK de front-end renderiza el botón)');
+      }
     }
   } catch (error) {
     fail(`No se pudo contactar a MercadoPago: ${error.message}`);

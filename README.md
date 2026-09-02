@@ -187,6 +187,33 @@ siguen interpretando como turnos.
 informativo para el listado; si la tienda crece, hay que descontarlo desde el
 webhook y reponerlo ante una devolución.
 
+### Los dos SDK de MercadoPago
+
+La integración usa el SDK en las dos puntas, como pide Checkout Pro:
+
+| Punta | Paquete | Dónde |
+| --- | --- | --- |
+| Back-end | `mercadopago` | [lib/mercadopago.ts](lib/mercadopago.ts) crea preferencias y consulta pagos |
+| Front-end | `@mercadopago/sdk-react` | [/tienda/carrito](app/tienda/carrito/page.tsx) renderiza el botón oficial |
+
+En el carrito el pago es en dos tiempos: **Continuar al pago** crea la orden y la
+preferencia contra el back-end, y recién ahí el SDK renderiza el Wallet Brick con
+ese `preferenceId`. Se usa `valueProp: 'payment_methods_logos'`, que muestra
+debajo del botón los logos oficiales de los medios de pago disponibles.
+
+Mientras la preferencia está viva el pedido queda congelado —cantidades y
+formulario deshabilitados—, porque tocar el carrito dejaría el checkout cobrando
+algo distinto de lo que se ve en pantalla. "Modificar el pedido" lo desbloquea y
+genera una preferencia nueva.
+
+`NEXT_PUBLIC_MP_PUBLIC_KEY` tiene que ser la clave pública de **la misma cuenta**
+que el `MP_ACCESS_TOKEN`: si no coinciden, el brick no puede abrir la
+preferencia. Si la variable falta, el checkout sigue funcionando por redirección
+al `init_point`; lo que se pierde es el botón oficial.
+
+El flujo de reservas (`/reservar`) sigue redirigiendo al `init_point`, que
+también es una integración válida de Checkout Pro.
+
 ### Acceso a los datos
 
 `services` y `professionals` son de lectura pública: el navegador los consulta con la
@@ -220,6 +247,7 @@ Variables de entorno del proyecto (Settings > Environment Variables):
 | `MP_ACCESS_TOKEN` | Credenciales de MercadoPago |
 | `MP_WEBHOOK_SECRET` | Recién existe después de registrar el webhook |
 | `NEXT_PUBLIC_SITE_URL` | El dominio de producción, sin barra final |
+| `NEXT_PUBLIC_MP_PUBLIC_KEY` | Clave pública, misma cuenta que el access token |
 | `MP_BINARY_MODE` | Opcional, default `true`. Solo afecta a la tienda |
 | `MP_MAX_INSTALLMENTS` | Opcional, default 12 |
 | `NEXT_PUBLIC_DEPOSIT_PERCENTAGE` | Opcional, default 30 |
