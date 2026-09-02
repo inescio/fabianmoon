@@ -25,27 +25,48 @@ export function isTestMode(): boolean {
   return accessToken.startsWith('TEST-');
 }
 
-let cachedConfig: MercadoPagoConfig | null = null;
+/**
+ * Integrator ID del Programa de Partners de MercadoPago.
+ *
+ * Viaja como header `X-Integrator-Id` en cada llamada a la API y es lo
+ * que atribuye la integración a la cuenta certificada. No es un secreto.
+ */
+const integratorId = process.env.MP_INTEGRATOR_ID || '';
 
-function getConfig(): MercadoPagoConfig {
+export function getIntegratorId(): string | null {
+  return isPlaceholder(integratorId) ? null : integratorId;
+}
+
+/**
+ * Config nueva en cada llamada, a propósito.
+ *
+ * Los clientes del SDK hacen `this.config.options = {...options,
+ * ...requestOptions}` antes de disparar el request: mutan el config que
+ * reciben. Con una instancia compartida, dos compras simultáneas pueden
+ * pisarse la idempotencyKey entre esa asignación y el fetch, y
+ * MercadoPago devolvería la preferencia de la otra orden. Un objeto por
+ * llamada sale prácticamente gratis y elimina el problema.
+ */
+function newConfig(): MercadoPagoConfig {
   if (!isMercadoPagoConfigured()) {
     throw new Error('MP_ACCESS_TOKEN no está configurado');
   }
-  if (!cachedConfig) {
-    cachedConfig = new MercadoPagoConfig({
-      accessToken,
-      options: { timeout: 10000 },
-    });
-  }
-  return cachedConfig;
+
+  return new MercadoPagoConfig({
+    accessToken,
+    options: {
+      timeout: 10000,
+      ...(getIntegratorId() ? { integratorId } : {}),
+    },
+  });
 }
 
 export function getPreferenceClient(): Preference {
-  return new Preference(getConfig());
+  return new Preference(newConfig());
 }
 
 export function getPaymentClient(): Payment {
-  return new Payment(getConfig());
+  return new Payment(newConfig());
 }
 
 /**
@@ -85,9 +106,15 @@ export function verifyWebhookSignature(params: {
   const hash = parts.v1;
   if (!ts || !hash) return false;
 
-  // MP exige el id en minúsculas cuando es alfanumérico.
-  const normalizedId = dataId.toLowerCase();
-  const manifest = `id:${normalizedId};request-id:${requestId ?? ''};ts:${ts};`;
+  // Dos reglas de MercadoPago sobre el manifiesto:
+  //  - el id va en minúsculas cuando es alfanumérico;
+  //  - el valor que no venga en la notificación se REMUEVE del manifiesto,
+  //    no se interpola vacío. Un `request-id:;` daría un manifiesto
+  //    distinto al que firmó MP y rechazaría todas las notificaciones.
+  const manifest =
+    `id:${dataId.toLowerCase()};` +
+    (requestId ? `request-id:${requestId};` : '') +
+    `ts:${ts};`;
 
   const expected = crypto
     .createHmac('sha256', MP_WEBHOOK_SECRET)

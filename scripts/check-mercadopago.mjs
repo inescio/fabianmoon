@@ -62,6 +62,16 @@ for (const key of required) {
   else ok(`${key} cargada`);
 }
 
+// Sin Integrator ID la integración funciona igual, pero MercadoPago no la
+// atribuye a la cuenta certificada del Programa de Partners.
+if (isPlaceholder(env.MP_INTEGRATOR_ID)) {
+  fail('MP_INTEGRATOR_ID sin cargar: la integración no queda atribuida en el Programa de Partners');
+} else if (!/^dev_[0-9a-f]{32}$/i.test(env.MP_INTEGRATOR_ID)) {
+  warn(`MP_INTEGRATOR_ID no tiene el formato esperado (dev_ + 32 hex): ${env.MP_INTEGRATOR_ID}`);
+} else {
+  ok('MP_INTEGRATOR_ID cargada (viaja como X-Integrator-Id en cada llamada)');
+}
+
 if (isPlaceholder(env.MP_WEBHOOK_SECRET)) {
   warn('MP_WEBHOOK_SECRET vacía: el webhook acepta notificaciones sin validar la firma');
 } else {
@@ -274,6 +284,9 @@ if (!credencialesOk) {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
         'X-Idempotency-Key': `diagnostico-${Date.now()}`,
+        ...(isPlaceholder(env.MP_INTEGRATOR_ID)
+          ? {}
+          : { 'X-Integrator-Id': env.MP_INTEGRATOR_ID }),
       },
       body: JSON.stringify({
         // Dos líneas con cantidades distintas: es el caso de la tienda y

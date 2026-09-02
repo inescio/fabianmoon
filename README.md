@@ -214,6 +214,22 @@ al `init_point`; lo que se pierde es el botón oficial.
 El flujo de reservas (`/reservar`) sigue redirigiendo al `init_point`, que
 también es una integración válida de Checkout Pro.
 
+### Integrator ID
+
+`MP_INTEGRATOR_ID` es el código del Programa de Partners de MercadoPago. Se
+carga una sola vez en [lib/mercadopago.ts](lib/mercadopago.ts) y el SDK lo manda
+como header `X-Integrator-Id` en **todas** las llamadas a la API —crear
+preferencias, consultar y buscar pagos—, que es lo que atribuye la integración a
+la cuenta certificada. No es un secreto, pero si falta en producción se pierden
+los beneficios del programa, así que `npm run check:mp` lo marca como error.
+
+Ojo con una trampa del SDK: los clientes hacen
+`this.config.options = { ...options, ...requestOptions }` antes de disparar el
+request, o sea que **mutan** el config que reciben. Por eso `newConfig()` arma
+uno nuevo en cada llamada en vez de compartir una instancia: con una sola
+compartida, dos compras simultáneas pueden pisarse la `idempotencyKey` entre esa
+asignación y el fetch, y MercadoPago devolvería la preferencia de la otra orden.
+
 ### Acceso a los datos
 
 `services` y `professionals` son de lectura pública: el navegador los consulta con la
@@ -248,6 +264,7 @@ Variables de entorno del proyecto (Settings > Environment Variables):
 | `MP_WEBHOOK_SECRET` | Recién existe después de registrar el webhook |
 | `NEXT_PUBLIC_SITE_URL` | El dominio de producción, sin barra final |
 | `NEXT_PUBLIC_MP_PUBLIC_KEY` | Clave pública, misma cuenta que el access token |
+| `MP_INTEGRATOR_ID` | Integrator ID del Programa de Partners |
 | `MP_BINARY_MODE` | Opcional, default `true`. Solo afecta a la tienda |
 | `MP_MAX_INSTALLMENTS` | Opcional, default 12 |
 | `NEXT_PUBLIC_DEPOSIT_PERCENTAGE` | Opcional, default 30 |
