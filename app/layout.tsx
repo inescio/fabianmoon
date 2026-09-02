@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Bebas_Neue, Michroma } from 'next/font/google'
 import './globals.css'
+import { getSiteUrl } from '@/lib/site-url'
 
 // Fuente para textos generales: Bebas Neue (desde Google Fonts)
 const bebasNeue = Bebas_Neue({ 
@@ -19,6 +20,9 @@ const michroma = Michroma({
 })
 
 export const metadata: Metadata = {
+  // Sin esto, /moon5.jpg se resuelve contra localhost y los previews
+  // de links salen rotos en producción.
+  metadataBase: new URL(getSiteUrl()),
   title: 'Fabián Moon - Peluquería & Barbería de Autor en La Rioja Capital',
   description: 'Peluquería y barbería de autor en La Rioja Capital. Estilo, precisión y personalidad en cada corte. Reservá tu turno ahora.',
   openGraph: {

@@ -49,32 +49,6 @@ export function getPaymentClient(): Payment {
 }
 
 /**
- * URL pública del sitio, usada para las back_urls y el notification_url.
- * Preferimos la variable explícita; si no está, deducimos el origen del
- * request (útil en previews de Vercel y en desarrollo).
- */
-export function getSiteUrl(request?: Request): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL;
-  if (configured && !isPlaceholder(configured)) {
-    return configured.replace(/\/$/, '');
-  }
-
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-
-  if (request) {
-    try {
-      return new URL(request.url).origin;
-    } catch {
-      /* ignorar */
-    }
-  }
-
-  return 'http://localhost:3000';
-}
-
-/**
  * Valida la firma del webhook (header `x-signature`).
  *
  * MercadoPago firma el manifiesto `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`

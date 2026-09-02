@@ -4,10 +4,10 @@ import { isValidEmail, isValidPhone, combineDateTime } from '@/lib/booking-utils
 import { computeBookingTotals, CURRENCY_ID, PAYMENT_HOLD_MINUTES } from '@/lib/pricing';
 import {
   getPreferenceClient,
-  getSiteUrl,
   isMercadoPagoConfigured,
   toMercadoPagoDate,
 } from '@/lib/mercadopago';
+import { getSiteUrl } from '@/lib/site-url';
 import { releaseExpiredHolds } from '@/lib/payments';
 
 export async function POST(request: NextRequest) {
