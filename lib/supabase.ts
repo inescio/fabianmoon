@@ -107,10 +107,13 @@ export interface AppointmentWithDetails extends Appointment {
 
 export interface Product {
   id: string;
+  /** Código corto. Viaja como `id` del ítem en la preferencia de MercadoPago. */
+  sku: string;
   name: string;
   description: string;
   /** Precio en ARS. */
   price: number;
+  /** Puede ser relativa (`/foto.jpg`): se absolutiza al armar la preferencia. */
   image_url: string | null;
   /** null = no se lleva control de stock para este producto. */
   stock: number | null;

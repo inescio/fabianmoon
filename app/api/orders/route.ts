@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
-      .select('id, name, description, price, stock, active')
+      .select('id, sku, name, description, price, image_url, stock, active')
       .in('id', productIds);
 
     if (productsError) {
@@ -145,6 +145,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // MercadoPago necesita la imagen como URL absoluta. En la base se
+    // pueden guardar rutas relativas (/foto.jpg) para que el catálogo no
+    // quede atado a un dominio; acá se resuelven contra el sitio actual.
+    const siteUrl = getSiteUrl(request);
+    const absolutizar = (url: string | null | undefined): string | undefined => {
+      if (!url) return undefined;
+      try {
+        return new URL(url, siteUrl).toString();
+      } catch {
+        return undefined;
+      }
+    };
+
     const lines = products.map((product) => {
       const quantity = quantities.get(product.id)!;
       const unitPrice = roundCurrency(Number(product.price));
@@ -153,6 +166,7 @@ export async function POST(request: NextRequest) {
         quantity,
         unitPrice,
         subtotal: roundCurrency(unitPrice * quantity),
+        pictureUrl: absolutizar(product.image_url),
       };
     });
 
@@ -217,7 +231,6 @@ export async function POST(request: NextRequest) {
 
     // ---- Preferencia de Checkout Pro --------------------------------
     try {
-      const siteUrl = getSiteUrl(request);
       const returnUrl = `${siteUrl}/tienda/pago`;
       const expiresAt = new Date(Date.now() + ORDER_EXPIRATION_HOURS * 60 * 60 * 1000);
 
@@ -227,13 +240,16 @@ export async function POST(request: NextRequest) {
           // el comprador ve en el carrito es exactamente lo que ve en el
           // checkout.
           items: lines.map((line) => ({
-            id: line.product.id,
+            // El SKU y no el uuid: es lo que MercadoPago muestra como
+            // identificador del ítem y lo que se concilia contra el catálogo.
+            id: line.product.sku,
             title: line.product.name.slice(0, 250),
             description: (line.product.description || line.product.name).slice(0, 250),
             category_id: 'beauty_care',
             quantity: line.quantity,
             currency_id: CURRENCY_ID,
             unit_price: line.unitPrice,
+            ...(line.pictureUrl ? { picture_url: line.pictureUrl } : {}),
           })),
           payer: {
             name: String(buyer_name).trim(),

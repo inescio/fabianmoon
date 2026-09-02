@@ -169,7 +169,7 @@ if (isPlaceholder(supabaseUrl) || isPlaceholder(supabaseKey)) {
     if (events.ok) ok('payment_events existe y sirve a los dos flujos');
     else fail(`payment_events: ${events.body?.message || events.status}`);
 
-    const productos = await supabaseGet('products?select=id,name,price,stock,active');
+    const productos = await supabaseGet('products?select=id,sku,name,description,price,image_url,stock,active');
     if (productos.ok) {
       const activos = (productos.body || []).filter((p) => p.active !== false);
       if (activos.length === 0) warn('La tienda no tiene productos activos');
@@ -184,6 +184,18 @@ if (isPlaceholder(supabaseUrl) || isPlaceholder(supabaseKey)) {
         `products: ${productos.body?.message || productos.status}. ` +
         '¿Corriste supabase/migrations/20260904000000_tienda.sql?'
       );
+    }
+
+    // El producto de la simulación de pago del desafío de Partners.
+    const homologacion = (productos.body || []).find((p) => p.sku === '9001');
+    if (!homologacion) {
+      warn('No está el producto 9001 de la simulación de pago de MercadoPago');
+    } else if (homologacion.description !== 'Dispositivo de tienda móvil de comercio electrónico') {
+      fail('El producto 9001 no tiene la descripción exacta que exige la simulación');
+    } else if (!homologacion.image_url) {
+      fail('El producto 9001 no tiene imagen y la simulación la pide');
+    } else {
+      ok('Producto 9001 de la simulación listo (id, descripción e imagen)');
     }
 
     const ordenes = await supabaseGet('orders?select=id,payment_status&limit=1');

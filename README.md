@@ -121,6 +121,7 @@ La seña es un porcentaje del total de la reserva (`NEXT_PUBLIC_DEPOSIT_PERCENTA
    | `20260902000000_mercadopago_checkout.sql` | Precios, estado de pago y `payment_events` |
    | `20260903000000_precios_iniciales.sql` | Precios y qué servicios exigen seña |
    | `20260904000000_tienda.sql` | Productos, órdenes y catálogo de la tienda |
+   | `20260905000000_sku_y_producto_homologacion.sql` | SKU de productos y producto de la simulación de pago |
 
    Son idempotentes: se pueden volver a correr sin romper nada.
 
@@ -176,6 +177,25 @@ servidor recalcula todo igual antes de crear la preferencia.
 A diferencia de la seña, la preferencia de la tienda lleva **una línea por
 producto** con su cantidad y precio unitario reales: lo que el comprador ve en
 el carrito es exactamente lo que ve en el checkout.
+
+**SKU e imagen.** Cada producto tiene un `sku` de 4 dígitos que es lo que viaja
+como `id` del ítem en la preferencia —no el uuid, que a MercadoPago no le dice
+nada—. Se asigna solo, con una secuencia que arranca en 1001.
+
+`image_url` puede guardarse relativa (`/moon5.jpg`) para que el catálogo no quede
+atado a un dominio: la ruta de órdenes la resuelve contra la URL del sitio antes
+de mandarla. MercadoPago se descarga la imagen y la rehospeda en su propio CDN,
+así que tiene que ser públicamente accesible desde internet — con la app
+corriendo en localhost, no la va a poder bajar.
+
+**Producto de la simulación de pago.** El SKU `9001` ("Terminal de Venta Móvil")
+existe para el desafío de Partners: su descripción es literal la que exige
+MercadoPago. Antes de que la peluquería salga en vivo con su catálogo real hay
+que darlo de baja:
+
+```sql
+update public.products set active = false where sku = '9001';
+```
 
 **Qué distingue un pago de otro.** El `external_reference` va prefijado:
 `order:<uuid>` o `appointment:<uuid>`. Es lo único que MercadoPago devuelve
