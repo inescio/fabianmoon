@@ -234,6 +234,25 @@ al `init_point`; lo que se pierde es el botón oficial.
 El flujo de reservas (`/reservar`) sigue redirigiendo al `init_point`, que
 también es una integración válida de Checkout Pro.
 
+### URL de retorno
+
+MercadoPago exige **tres URL distintas**, una por escenario. Mandar la misma
+para los tres baja el puntaje de calidad de la integración.
+
+| Escenario | Tienda | Turnos |
+| --- | --- | --- |
+| `back_urls.success` | `/tienda/pago/exito` | `/reservar/pago/exito` |
+| `back_urls.pending` | `/tienda/pago/pendiente` | `/reservar/pago/pendiente` |
+| `back_urls.failure` | `/tienda/pago/error` | `/reservar/pago/error` |
+
+Las tres renderizan el mismo componente y **el escenario es solo una pista**: la
+pantalla verifica igual el estado real contra `/api/payments/status`, porque esa
+URL la puede escribir cualquiera. Sirve para el mensaje de espera y como
+respaldo si no se puede verificar.
+
+`/tienda/pago` y `/reservar/pago` sin sufijo siguen existiendo, para las órdenes
+y turnos creados antes de este cambio.
+
 ### Integrator ID
 
 `MP_INTEGRATOR_ID` es el código del Programa de Partners de MercadoPago. Se

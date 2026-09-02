@@ -231,7 +231,8 @@ export async function POST(request: NextRequest) {
 
     // ---- Preferencia de Checkout Pro --------------------------------
     try {
-      const returnUrl = `${siteUrl}/tienda/pago`;
+      // MercadoPago pide una URL de retorno distinta por escenario.
+      const retorno = (escenario: string) => `${siteUrl}/tienda/pago/${escenario}`;
       const expiresAt = new Date(Date.now() + ORDER_EXPIRATION_HOURS * 60 * 60 * 1000);
 
       const preference = await getPreferenceClient().create({
@@ -275,9 +276,9 @@ export async function POST(request: NextRequest) {
           external_reference: buildExternalReference({ kind: 'order', id: order.id }),
           metadata: { order_id: order.id },
           back_urls: {
-            success: returnUrl,
-            pending: returnUrl,
-            failure: returnUrl,
+            success: retorno('exito'),
+            pending: retorno('pendiente'),
+            failure: retorno('error'),
           },
           // MercadoPago rechaza auto_return con back_urls sin HTTPS.
           ...(siteUrl.startsWith('https://') ? { auto_return: 'approved' } : {}),

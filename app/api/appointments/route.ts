@@ -197,7 +197,8 @@ export async function POST(request: NextRequest) {
     // Crear la preferencia de Checkout Pro
     try {
       const siteUrl = getSiteUrl(request);
-      const returnUrl = `${siteUrl}/reservar/pago`;
+      // MercadoPago pide una URL de retorno distinta por escenario.
+      const retorno = (escenario: string) => `${siteUrl}/reservar/pago/${escenario}`;
       const serviceNames = selectedServices.map((s: any) => s.name).join(', ');
 
       const preference = await getPreferenceClient().create({
@@ -226,9 +227,9 @@ export async function POST(request: NextRequest) {
           }),
           metadata: { appointment_id: appointment.id },
           back_urls: {
-            success: returnUrl,
-            pending: returnUrl,
-            failure: returnUrl,
+            success: retorno('exito'),
+            pending: retorno('pendiente'),
+            failure: retorno('error'),
           },
           // MercadoPago rechaza auto_return con back_urls sin HTTPS.
           ...(siteUrl.startsWith('https://') ? { auto_return: 'approved' } : {}),
